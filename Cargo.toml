@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 miiobin = { git = "https://github.com/BogdanOlar/miiobin" }
+clap = "2.33.0"
