@@ -1,11 +1,9 @@
+use roboutil::discover;
 extern crate clap;
 use clap::{Arg, App, SubCommand};
 use std::net::{Ipv4Addr};
 use std::str::{FromStr};
 use std::process;
-
-mod discover;
-
 
 fn main() {
     let ip_src_arg = Arg::with_name("source_ip")

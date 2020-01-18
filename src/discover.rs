@@ -1,11 +1,12 @@
+//! Implementation for the discovery functionality of the miio protocol, specifically for the Xiaomi RoboRock S5
+//! vacuum cleaner
+//!
+
 use std::net::{UdpSocket, IpAddr, Ipv4Addr};
+use std::{str, fmt, time::Duration};
 use miiobin::{MI_DISCOVER_PACKET, MiPacket};
-use std::time::Duration;
-use std::str;
 use crate::discover::Error::{Socket, NoResponse};
 use std::error::Error as StdError;
-use std::fmt;
-
 
 /// How many milliseconds to wait for a response to the discovery request
 const LISTEN_TIMEOUT: Duration = Duration::from_millis(2000);
