@@ -1,15 +1,15 @@
 [package]
-name = "roboutil"
+name = "roborockutil"
 version = "0.1.0"
 authors = ["Bogdan Olar <olar.bogdan.dev@gmail.com>"]
 edition = "2018"
 
 [lib]
-name = "roboutil"
+name = "roborockutil"
 path = "src/lib.rs"
 
 [[bin]]
-name = "roboutil"
+name = "roborockutil"
 path = "src/bin.rs"
 
 [dependencies]

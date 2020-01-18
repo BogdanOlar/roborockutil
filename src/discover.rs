@@ -1,5 +1,19 @@
 //! Implementation for the discovery functionality of the miio protocol, specifically for the Xiaomi RoboRock S5
-//! vacuum cleaner
+//! vacuum cleaner.
+//!
+//! This module can be used to discover vacuum robots on a particular network.
+//!
+//! If the robot is in "provisioning mode" (i.e. the user reset its wifi connection, and the robot is offering a
+//! wifi Access Point, then the `md5` value in the received response is actually the access token, which can be used
+//! to encrypt/decrypt the rest of the communication with the robot.
+//!
+//! It should be noted that the token is only valid while the robot is in "provisioning mode".
+//! After it connects to the user provided router/network, the communication is encrypted with a different token
+//! which, at the moment, can only be obtained by rooting the device. This "cloud token" is unique to each vacuum robot,
+//! and is persistent across firmware updates.
+//!
+//! If a discovery is performed while the robot is provisioned (connected to the use's router), then the md5 value
+//! will always be a 16 byte array containing all 0s.
 //!
 
 use std::net::{UdpSocket, IpAddr, Ipv4Addr};

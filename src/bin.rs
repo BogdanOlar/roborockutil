@@ -1,4 +1,4 @@
-use roboutil::discover;
+use roborockutil::discover;
 extern crate clap;
 use clap::{Arg, App, SubCommand};
 use std::net::{Ipv4Addr};
