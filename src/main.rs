@@ -1,7 +1,11 @@
 extern crate clap;
 use clap::{Arg, App, SubCommand};
+use std::net::{Ipv4Addr};
+use std::str::{FromStr};
+use std::process;
 
 mod discover;
+
 
 fn main() {
     let ip_src_arg = Arg::with_name("source_ip")
@@ -40,7 +44,10 @@ fn main() {
             .arg(ip_src_arg
                 .takes_value(true)
                 .required(true)
-            ))
+            )
+            .arg(ip_dst_arg
+                .takes_value(true)
+                .required(false)))
         .subcommand(SubCommand::with_name("info")
             .about("Get device information")
             .arg(token_arg.required(true))
@@ -48,13 +55,34 @@ fn main() {
         .get_matches();
 
     if let Some(discover_cmd) = matches.subcommand_matches("discover") {
-        match discover::discover(discover_cmd.value_of("source_ip").unwrap()) {
-            Ok(responses) => {
-                println!("{:?}", responses);
+        let sock_ip_str = discover_cmd.value_of("source_ip").unwrap();
+
+        if let Ok(ip) = Ipv4Addr::from_str(sock_ip_str) {
+            // process optional arguments
+            let mut dip_opt = Option::None;
+            if let Some(dip_str) = discover_cmd.value_of("destination_ip") {
+                if let Ok(ip) = Ipv4Addr::from_str(dip_str)
+                {
+                    dip_opt = Some(ip);
+                } else {
+                    eprintln!("Could not parse --dip \"{}\". \
+                              Please use correct format \"--dip vvv.xxx.yyy.zzz\". Eg: \"--dip 192.168.8.1\"", dip_str);
+                    process::exit(1);
+                }
             }
-            Err(e) => {
-                println!("{}", e);
+
+            // do discovery
+            match discover::discover(ip, dip_opt) {
+                Ok(responses) => {
+                    println!("{:?}", responses);
+                }
+                Err(e) => {
+                    eprintln!("{}", e);
+                }
             }
+        } else {
+            eprintln!("Could not parse --sip \"{}\". \
+                      Please use correct format \"--sip vvv.xxx.yyy.zzz\". Eg: \"--sip 192.168.8.24\"", sock_ip_str);
         }
     }
 
