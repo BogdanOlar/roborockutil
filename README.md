@@ -1,2 +1,2 @@
-# miioutil
-Mi IO Home automation utility
+# roboutil
+Mi IO Home automation utility for managing Xiaomi RoboRock S5 vacuum cleaners
