@@ -1,5 +1,5 @@
 [package]
-name = "miioutil"
+name = "roboutil"
 version = "0.1.0"
 authors = ["Bogdan Olar <olar.bogdan.dev@gmail.com>"]
 edition = "2018"
