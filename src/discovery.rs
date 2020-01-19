@@ -49,60 +49,52 @@ pub struct  Response {
 ///         be broadcast (i.e. on IP `255.255.255.255`), otherwise the discovery request will addressed to the
 ///         `Ipv4Addr` contained in `Option::Some(dip)`
 ///
-pub fn discover(sip: Ipv4Addr, dip_opt: Option<Ipv4Addr>) -> Result<Vec<Response>, Error>{
+pub fn discover(socket: UdpSocket, dip_opt: Option<Ipv4Addr>) -> Result<Vec<Response>, Error>{
     let mut ret_responses: Vec<Response> = Vec::new();
 
-    match UdpSocket::bind(sip.to_string() + ":" + MI_DISCOVER_UDP_PORT.to_string().as_str()) {
-        Ok(socket) =>  {
-
-            // send discovery request
-            match dip_opt {
-                Some(dip) => {
-                    // send the discovery to a particular given IP
-                    if let Err(e) = socket.send_to(&MI_DISCOVER_PACKET, dip.to_string() +
-                        ":" + MI_DISCOVER_UDP_PORT.to_string().as_str()) {
-                        return Err(Socket(e.to_string()));
-                    }
-                }
-                None => {
-                    // broadcast discovery
-                    if let Err(e) = socket.set_broadcast(true) { return Err(Socket(e.to_string())); }
-                    if let Err(e) = socket.send_to(&MI_DISCOVER_PACKET, Ipv4Addr::BROADCAST.to_string() +
-                        ":" + MI_DISCOVER_UDP_PORT.to_string().as_str()) {
-                        return Err(Socket(e.to_string()));
-                    }
-                    if let Err(e) = socket.set_broadcast(false) { return Err(Socket(e.to_string())); }
-                }
-            }
-
-            // listen for responses
-            let mut comm_buf = [0u8;1000];
-            if let Err(e) = socket.set_read_timeout(Option::Some(LISTEN_TIMEOUT)) {
+    // send discovery request
+    match dip_opt {
+        Some(dip) => {
+            // send the discovery to a particular given IP
+            if let Err(e) = socket.send_to(&MI_DISCOVER_PACKET, dip.to_string() +
+                ":" + MI_DISCOVER_UDP_PORT.to_string().as_str()) {
                 return Err(Socket(e.to_string()));
             }
-            loop {
-                if let Ok((amt, src)) = socket.recv_from(&mut comm_buf)
-                {
-                    if let Ok(resp) = miiobin::MiPacket::parse(&comm_buf[..amt])
-                    {
-                        if let Ok(token_str) = str::from_utf8(&resp.md5) {
-                            if token_str.chars().all(char::is_alphanumeric) &&
-                                (resp.payload.len() == 0) &&
-                                (resp.reserved == 0) {
-                                // save received valid discovery response
-                                if let IpAddr::V4(dip) = src.ip() {
-                                    ret_responses.push(Response { packet: resp, ip: dip });
-                                }
-                            }
+        }
+        None => {
+            // broadcast discovery
+            if let Err(e) = socket.set_broadcast(true) { return Err(Socket(e.to_string())); }
+            if let Err(e) = socket.send_to(&MI_DISCOVER_PACKET, Ipv4Addr::BROADCAST.to_string() +
+                ":" + MI_DISCOVER_UDP_PORT.to_string().as_str()) {
+                return Err(Socket(e.to_string()));
+            }
+            if let Err(e) = socket.set_broadcast(false) { return Err(Socket(e.to_string())); }
+        }
+    }
+
+    // listen for responses
+    let mut comm_buf = [0u8;1000];
+    if let Err(e) = socket.set_read_timeout(Option::Some(LISTEN_TIMEOUT)) {
+        return Err(Socket(e.to_string()));
+    }
+    loop {
+        if let Ok((amt, src)) = socket.recv_from(&mut comm_buf)
+        {
+            if let Ok(resp) = miiobin::MiPacket::parse(&comm_buf[..amt])
+            {
+                if let Ok(token_str) = str::from_utf8(&resp.md5) {
+                    if token_str.chars().all(char::is_alphanumeric) &&
+                        (resp.payload.len() == 0) &&
+                        (resp.reserved == 0) {
+                        // save received valid discovery response
+                        if let IpAddr::V4(dip) = src.ip() {
+                            ret_responses.push(Response { packet: resp, ip: dip });
                         }
                     }
-                } else {
-                    break;
                 }
             }
-        }
-        Err(e) => {
-            return Err(Socket(e.to_string()));
+        } else {
+            break;
         }
     }
 

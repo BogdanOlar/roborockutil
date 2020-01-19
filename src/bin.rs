@@ -1,11 +1,13 @@
 use roborockutil::{discovery, deviceinfo, provisioning};
+use miiobin::{MI_DISCOVER_UDP_PORT};
 extern crate clap;
 use clap::{Arg, App, SubCommand, ArgMatches};
-use std::net::{Ipv4Addr};
+use std::net::{Ipv4Addr, UdpSocket};
 use std::str::{FromStr, from_utf8};
 use std::process;
 use std::error::Error as StdError;
 use std::fmt;
+
 #[derive(Debug)]
 enum ArgError {
     NotFound(String),
@@ -67,10 +69,17 @@ fn main() {
                 .required(false)))
         .subcommand(SubCommand::with_name(arg_cmd_name_info)
             .about("Get device information")
-            .arg(token_arg.clone()
+            .arg(sip_arg.clone()
+                .required(true))
+            .arg(dip_arg.clone()
                 .required(true))
             .arg(did_arg.clone()
-                .required(true)))
+                .required(true))
+            .arg(token_arg.clone()
+                .required(true))
+            .arg(stamp_arg.clone()
+                .required(true))
+            .arg(cmdid_arg.clone()))
         .subcommand(SubCommand::with_name(arg_cmd_name_status)
             .about("Get device status")
             .arg(sip_arg.clone()
@@ -92,44 +101,97 @@ fn main() {
         });
 
         // process optional arguments
-        let mut dip_opt;
+        let dip_opt;
         match arg_get_ip(arg_name_dip, &discover_cmd) {
             Ok(ip) => dip_opt = Some(ip),
-            Err(e) => dip_opt = None
+            Err(_e) => dip_opt = None
         }
 
+        // create UDP socket
+        let socket = UdpSocket::bind(sip.to_string() + ":" + MI_DISCOVER_UDP_PORT.to_string().as_str())
+            .unwrap_or_else(|e|  {
+                eprintln!("{}", e);
+                process::exit(1);
+            });
+
         // do discovery
-        match discovery::discover(sip, dip_opt) {
+        match discovery::discover(socket, dip_opt) {
             Ok(responses) => { print_discover_results(&responses); }
             Err(e) => { eprintln!("{}", e); }
         }
     }
 
-    if let Some(status_cmd) = matches.subcommand_matches(arg_cmd_name_status) {
+    if let Some(info_cmd) = matches.subcommand_matches(arg_cmd_name_info) {
         // process required arguments
-        let sip = arg_get_ip(arg_name_sip, &status_cmd).unwrap_or_else(|e|  {
+        let sip = arg_get_ip(arg_name_sip, &info_cmd).unwrap_or_else(|e| {
             eprintln!("{}", e);
             process::exit(1);
         });
-        let dip = arg_get_ip(arg_name_dip, &status_cmd).unwrap_or_else(|e|  {
+        let dip = arg_get_ip(arg_name_dip, &info_cmd).unwrap_or_else(|e| {
             eprintln!("{}", e);
             process::exit(1);
         });
-        let did = arg_get_u32(arg_name_did, &status_cmd).unwrap_or_else(|e|  {
+        let did = arg_get_u32(arg_name_did, &info_cmd).unwrap_or_else(|e| {
             eprintln!("{}", e);
             process::exit(1);
         });
-        let token = arg_get_token(arg_name_token, &status_cmd).unwrap_or_else(|e|  {
+        let token = arg_get_token(arg_name_token, &info_cmd).unwrap_or_else(|e| {
             eprintln!("{}", e);
             process::exit(1);
         });
-        let cmdid = arg_get_u32(arg_name_cmdid, &status_cmd).unwrap_or_else(|e|  {
+        let mut stamp = arg_get_u32(arg_name_stamp, &info_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let mut cmdid = arg_get_u32(arg_name_cmdid, &info_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+
+        // create UDP socket
+        let socket = UdpSocket::bind(sip.to_string() + ":" + MI_DISCOVER_UDP_PORT.to_string().as_str())
+            .unwrap_or_else(|e|  {
             eprintln!("{}", e);
             process::exit(1);
         });
 
         // get device status
-        deviceinfo::status(sip, dip, did, &token, cmdid);
+        let resp = deviceinfo::status(&socket, dip, did, &token, &mut stamp, &mut cmdid);
+        println!("{:?}", resp);
+    }
+
+    if let Some(status_cmd) = matches.subcommand_matches(arg_cmd_name_status) {
+        // process required arguments
+        let sip = arg_get_ip(arg_name_sip, &status_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let dip = arg_get_ip(arg_name_dip, &status_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let did = arg_get_u32(arg_name_did, &status_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let token = arg_get_token(arg_name_token, &status_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let cmdid = arg_get_u32(arg_name_cmdid, &status_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+
+        // create UDP socket
+        let socket = UdpSocket::bind(sip.to_string() + ":" + MI_DISCOVER_UDP_PORT.to_string().as_str())
+            .unwrap_or_else(|e|  {
+                eprintln!("{}", e);
+                process::exit(1);
+            });
+
+        // get device status
+        deviceinfo::info(&socket, dip, did, &token, cmdid);
     }
 }
 
@@ -212,8 +274,8 @@ fn print_discover_results(responses: &Vec<discovery::Response>) {
 impl StdError for ArgError {
     fn description(&self) -> &str {
         match &*self {
-            ArgError::NotFound(arg_str) => "Missing argument",
-            ArgError::Parse(arg_str,arg_err) => "Missing argument value"
+            ArgError::NotFound(_arg_str) => "Missing argument",
+            ArgError::Parse(_arg_str,_arg_err) => "Missing argument value"
         }
     }
 }
