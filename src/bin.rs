@@ -16,8 +16,8 @@ enum ArgError {
 
 fn main() {
     let arg_cmd_name_discover = "discover";
-    let arg_cmd_name_info = "info";
     let arg_cmd_name_status = "status";
+    let arg_cmd_name_info = "info";
 
     let arg_name_sip = "sip";
     let sip_arg = Arg::with_name(arg_name_sip)
@@ -67,7 +67,7 @@ fn main() {
                 .required(true))
             .arg(dip_arg.clone()
                 .required(false)))
-        .subcommand(SubCommand::with_name(arg_cmd_name_info)
+        .subcommand(SubCommand::with_name(arg_cmd_name_status)
             .about("Get device information")
             .arg(sip_arg.clone()
                 .required(true))
@@ -80,7 +80,7 @@ fn main() {
             .arg(stamp_arg.clone()
                 .required(true))
             .arg(cmdid_arg.clone()))
-        .subcommand(SubCommand::with_name(arg_cmd_name_status)
+        .subcommand(SubCommand::with_name(arg_cmd_name_info)
             .about("Get device status")
             .arg(sip_arg.clone()
                 .required(true))
@@ -121,45 +121,6 @@ fn main() {
         }
     }
 
-    if let Some(info_cmd) = matches.subcommand_matches(arg_cmd_name_info) {
-        // process required arguments
-        let sip = arg_get_ip(arg_name_sip, &info_cmd).unwrap_or_else(|e| {
-            eprintln!("{}", e);
-            process::exit(1);
-        });
-        let dip = arg_get_ip(arg_name_dip, &info_cmd).unwrap_or_else(|e| {
-            eprintln!("{}", e);
-            process::exit(1);
-        });
-        let did = arg_get_u32(arg_name_did, &info_cmd).unwrap_or_else(|e| {
-            eprintln!("{}", e);
-            process::exit(1);
-        });
-        let token = arg_get_token(arg_name_token, &info_cmd).unwrap_or_else(|e| {
-            eprintln!("{}", e);
-            process::exit(1);
-        });
-        let mut stamp = arg_get_u32(arg_name_stamp, &info_cmd).unwrap_or_else(|e| {
-            eprintln!("{}", e);
-            process::exit(1);
-        });
-        let mut cmdid = arg_get_u32(arg_name_cmdid, &info_cmd).unwrap_or_else(|e| {
-            eprintln!("{}", e);
-            process::exit(1);
-        });
-
-        // create UDP socket
-        let socket = UdpSocket::bind(sip.to_string() + ":" + MI_DISCOVER_UDP_PORT.to_string().as_str())
-            .unwrap_or_else(|e|  {
-            eprintln!("{}", e);
-            process::exit(1);
-        });
-
-        // get device status
-        let resp = deviceinfo::status(&socket, dip, did, &token, &mut stamp, &mut cmdid);
-        println!("{:?}", resp);
-    }
-
     if let Some(status_cmd) = matches.subcommand_matches(arg_cmd_name_status) {
         // process required arguments
         let sip = arg_get_ip(arg_name_sip, &status_cmd).unwrap_or_else(|e| {
@@ -178,7 +139,46 @@ fn main() {
             eprintln!("{}", e);
             process::exit(1);
         });
+        let mut stamp = arg_get_u32(arg_name_stamp, &status_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
         let cmdid = arg_get_u32(arg_name_cmdid, &status_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+
+        // create UDP socket
+        let socket = UdpSocket::bind(sip.to_string() + ":" + MI_DISCOVER_UDP_PORT.to_string().as_str())
+            .unwrap_or_else(|e|  {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+
+        // get device status
+        let resp = deviceinfo::status(&socket, dip, did, &token, &mut stamp, cmdid);
+        println!("{:?}", resp);
+    }
+
+    if let Some(info_cmd) = matches.subcommand_matches(arg_cmd_name_info) {
+        // process required arguments
+        let sip = arg_get_ip(arg_name_sip, &info_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let dip = arg_get_ip(arg_name_dip, &info_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let did = arg_get_u32(arg_name_did, &info_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let token = arg_get_token(arg_name_token, &info_cmd).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            process::exit(1);
+        });
+        let cmdid = arg_get_u32(arg_name_cmdid, &info_cmd).unwrap_or_else(|e| {
             eprintln!("{}", e);
             process::exit(1);
         });

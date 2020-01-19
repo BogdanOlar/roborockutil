@@ -29,13 +29,16 @@ pub enum Error {
 /// `cmdid` - Command id. This value is used to match the content of a command (`get_status`) with the content of a
 ///         response (`StatusResponse`). Its value needs to be incremented for each command-response pair.
 ///
-pub fn status(socket: &UdpSocket, dip: Ipv4Addr, did: u32, token: &[u8; 16], stamp: &mut u32, cmdid: &mut u32)
+pub fn status(socket: &UdpSocket, dip: Ipv4Addr, did: u32, token: &[u8; 16], stamp: &mut u32, cmdid: u32)
               -> Result<StatusResponse, Error>
 {
     let mut comm_buf = [0u8;1024];
 
     // FIXME implement serialization for this
-    let cmd_payload_str = format!("{{\"method\": \"get_status\", \"id\": {}, \"params\": {{}}}}\0", cmdid);
+    let status_cmd = StatusCommand::new(cmdid);
+    let cmd_payload_str = serde_json::to_string(&status_cmd).unwrap();
+
+//    let cmd_payload_str = format!("{{\"method\": \"get_status\", \"id\": {}, \"params\": {{}}}}\0", cmdid);
 
     let mut packet = MiPacket::new(did, *stamp);
     packet.payload.extend_from_slice(cmd_payload_str.as_bytes());
@@ -76,6 +79,7 @@ pub fn status(socket: &UdpSocket, dip: Ipv4Addr, did: u32, token: &[u8; 16], sta
 }
 
 /// FIXME add documentation
+#[allow(unused_variables)]
 pub fn info(socket: &UdpSocket, dip: Ipv4Addr, did: u32, token: &[u8; 16], cmdid: u32) {
     println!("{{\"method\": \"get_status\", \"id\": {}, \"params\": {{}}}}", cmdid);
 }
