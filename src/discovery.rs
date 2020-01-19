@@ -18,15 +18,12 @@
 
 use std::net::{UdpSocket, IpAddr, Ipv4Addr};
 use std::{str, fmt, time::Duration};
-use miiobin::{MI_DISCOVER_PACKET, MiPacket};
-use crate::discover::Error::{Socket, NoResponse};
+use miiobin::{MI_DISCOVER_PACKET, MI_DISCOVER_UDP_PORT, MiPacket};
+use crate::discovery::Error::{Socket, NoResponse};
 use std::error::Error as StdError;
 
 /// How many milliseconds to wait for a response to the discovery request
 const LISTEN_TIMEOUT: Duration = Duration::from_millis(2000);
-
-/// The UDP port used by discovery messages
-pub const DISCOVER_UDP_PORT: u16 = 54321;
 
 #[derive(Debug)]
 pub enum Error {
@@ -36,8 +33,8 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct  Response {
-    ip: Ipv4Addr,
-    packet: MiPacket,
+    pub ip: Ipv4Addr,
+    pub packet: MiPacket,
 }
 
 /// Return a list of miio devices present on a given network, and their IP's. If no responses are received, then
@@ -55,7 +52,7 @@ pub struct  Response {
 pub fn discover(sip: Ipv4Addr, dip_opt: Option<Ipv4Addr>) -> Result<Vec<Response>, Error>{
     let mut ret_responses: Vec<Response> = Vec::new();
 
-    match UdpSocket::bind(sip.to_string() + ":" + DISCOVER_UDP_PORT.to_string().as_str()) {
+    match UdpSocket::bind(sip.to_string() + ":" + MI_DISCOVER_UDP_PORT.to_string().as_str()) {
         Ok(socket) =>  {
 
             // send discovery request
@@ -63,7 +60,7 @@ pub fn discover(sip: Ipv4Addr, dip_opt: Option<Ipv4Addr>) -> Result<Vec<Response
                 Some(dip) => {
                     // send the discovery to a particular given IP
                     if let Err(e) = socket.send_to(&MI_DISCOVER_PACKET, dip.to_string() +
-                        ":" + DISCOVER_UDP_PORT.to_string().as_str()) {
+                        ":" + MI_DISCOVER_UDP_PORT.to_string().as_str()) {
                         return Err(Socket(e.to_string()));
                     }
                 }
@@ -71,7 +68,7 @@ pub fn discover(sip: Ipv4Addr, dip_opt: Option<Ipv4Addr>) -> Result<Vec<Response
                     // broadcast discovery
                     if let Err(e) = socket.set_broadcast(true) { return Err(Socket(e.to_string())); }
                     if let Err(e) = socket.send_to(&MI_DISCOVER_PACKET, Ipv4Addr::BROADCAST.to_string() +
-                        ":" + DISCOVER_UDP_PORT.to_string().as_str()) {
+                        ":" + MI_DISCOVER_UDP_PORT.to_string().as_str()) {
                         return Err(Socket(e.to_string()));
                     }
                     if let Err(e) = socket.set_broadcast(false) { return Err(Socket(e.to_string())); }
